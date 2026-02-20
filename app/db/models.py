@@ -36,6 +36,7 @@ class Payment(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     amount = Column(Numeric(12, 2), nullable=False)
+    plan_id = Column(String(20), nullable=False)
     currency = Column(String(3), nullable=False, server_default="RUB")
     status = Column(String(20), nullable=False, server_default="pending")
     transaction_id = Column(String(255), nullable=False, unique=True)

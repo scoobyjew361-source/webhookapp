@@ -33,6 +33,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("amount", sa.Numeric(12, 2), nullable=False),
+        sa.Column("plan_id", sa.String(length=20), nullable=False),
         sa.Column("currency", sa.String(length=3), server_default="RUB", nullable=False),
         sa.Column("status", sa.String(length=20), server_default="pending", nullable=False),
         sa.Column("transaction_id", sa.String(length=255), nullable=False),

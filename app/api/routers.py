@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 import json
 import logging
 
@@ -8,11 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import PaymentCreateIn, PaymentCreateOut
+from app.api.webhook_utils import extract_status, extract_transaction_id
 from app.core.config import HOST_URL, LAVA_API_URL, LAVA_SECRET_KEY, LAVA_SHOP_ID, LAVA_WEBHOOK_KEY
 from app.db.database import get_db
 from app.db.models import Payment, Subscription, User
 from app.services.lava import LavaService
 from app.services.notifications import send_payment_success_event
+from app.services.plans import PLAN_PERIODS_DAYS, PLAN_PRICES
 
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -26,35 +27,6 @@ lava_service = LavaService(
     webhook_key=LAVA_WEBHOOK_KEY,
     host_url=HOST_URL,
 )
-
-PLAN_PRICES: dict[str, Decimal] = {
-    "basic": Decimal("299.00"),
-    "pro": Decimal("799.00"),
-}
-
-
-def _extract_status(payload: dict) -> str:
-    raw = (
-        payload.get("status")
-        or payload.get("invoiceStatus")
-        or payload.get("data", {}).get("status")
-        or ""
-    )
-    return str(raw).lower().strip()
-
-
-def _extract_transaction_id(payload: dict) -> str:
-    raw = (
-        payload.get("transaction_id")
-        or payload.get("invoiceId")
-        or payload.get("id")
-        or payload.get("orderId")
-        or payload.get("data", {}).get("invoiceId")
-        or payload.get("data", {}).get("id")
-        or ""
-    )
-    return str(raw).strip()
-
 
 @router.post("/payments/create", response_model=PaymentCreateOut)
 async def create_payment(payload: PaymentCreateIn, db: AsyncSession = Depends(get_db)):
@@ -85,6 +57,7 @@ async def create_payment(payload: PaymentCreateIn, db: AsyncSession = Depends(ge
         payment = Payment(
             user_id=user_id,
             amount=amount,
+            plan_id=payload.plan_id,
             currency="RUB",
             status="pending",
             transaction_id=payment_data["transaction_id"],
@@ -106,8 +79,8 @@ async def lava_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    status = _extract_status(payload)
-    transaction_id = _extract_transaction_id(payload)
+    status = extract_status(payload)
+    transaction_id = extract_transaction_id(payload)
 
     if not transaction_id:
         raise HTTPException(status_code=400, detail="transaction_id is required")
@@ -137,12 +110,13 @@ async def lava_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             sub = (await db.execute(sub_stmt)).scalar_one_or_none()
 
             now = datetime.now(timezone.utc)
-            period = timedelta(days=30)
+            period_days = PLAN_PERIODS_DAYS.get(payment.plan_id, 30)
+            period = timedelta(days=period_days)
 
             if sub is None:
                 sub = Subscription(
                     user_id=payment.user_id,
-                    plan_id="basic",
+                    plan_id=payment.plan_id,
                     expires_at=now + period,
                     is_active=True,
                 )
@@ -150,10 +124,8 @@ async def lava_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             else:
                 base = sub.expires_at if sub.expires_at and sub.expires_at > now else now
                 sub.expires_at = base + period
+                sub.plan_id = payment.plan_id
                 sub.is_active = True
-
-            user_stmt = select(User).where(User.id == payment.user_id)
-            user = (await db.execute(user_stmt)).scalar_one_or_none()
 
         elif status in {"failed", "cancelled", "canceled", "expired"}:
             payment.status = "failed"
