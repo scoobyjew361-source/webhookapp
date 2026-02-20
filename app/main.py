@@ -1,6 +1,5 @@
 from fastapi import FastAPI
-from pathlib import Path
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from app.api.routers import router as api_router
 from app.site_pages import router as site_router
 
@@ -15,5 +14,4 @@ def health():
  
 @app.get("/lava-verify_a1a1ca323dfe8e77.html", include_in_schema=False)
 async def lava_verify_file():
-    file_path = Path(__file__).resolve().parent / "verify" / "lava-verify_a1a1ca323dfe8e77.html"
-    return FileResponse(file_path)
+    return HTMLResponse("lava-verify=a1a1ca323dfe8e77")
