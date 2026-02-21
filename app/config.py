@@ -1,9 +1,11 @@
 import os
 from dataclasses import dataclass
+
 from dotenv import load_dotenv
 
-
 load_dotenv()
+
+REQUIRED_ENV_VARS = ("BOT_TOKEN", "ADMIN_ID", "DATABASE_URL", "HOST_URL")
 
 
 def _require_env(name: str) -> str:
@@ -29,16 +31,12 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    bot_token = _require_env("BOT_TOKEN")
-    admin_id_raw = _require_env("ADMIN_ID")
-    database_url = _require_env("DATABASE_URL")
-    host_url = _require_env("HOST_URL")
-
+    values = {name: _require_env(name) for name in REQUIRED_ENV_VARS}
     return Settings(
-        bot_token=bot_token,
-        admin_id=_parse_admin_id(admin_id_raw),
-        database_url=database_url,
-        host_url=host_url,
+        bot_token=values["BOT_TOKEN"],
+        admin_id=_parse_admin_id(values["ADMIN_ID"]),
+        database_url=values["DATABASE_URL"],
+        host_url=values["HOST_URL"],
     )
 
 
