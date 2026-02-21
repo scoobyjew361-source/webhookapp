@@ -43,8 +43,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     first_name = message.from_user.first_name if message.from_user else "друг"
     await message.answer(
         text=(
-            f"Привет, {first_name}!\n\n"
-            "Я бот для заявок. Выбери действие в меню ниже."
+            f"Привет, {first_name}!\n\nЯ бот для заявок. Выбери действие в меню ниже."
         ),
         reply_markup=get_main_menu_keyboard(),
     )

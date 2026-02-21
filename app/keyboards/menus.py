@@ -44,6 +44,10 @@ def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📞 Позвонить", url=f"tel:{phone_link}")],
-            [InlineKeyboardButton(text="✅ Обработано", callback_data=f"lead_done:{lead_id}")],
+            [
+                InlineKeyboardButton(
+                    text="✅ Обработано", callback_data=f"lead_done:{lead_id}"
+                )
+            ],
         ]
     )
