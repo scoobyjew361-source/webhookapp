@@ -6,20 +6,22 @@ from app.keyboards.menus import get_admin_lead_keyboard
 
 
 def build_admin_lead_message(
+    lead_id: int,
     name: str,
     phone: str,
     comment: str | None,
     username: str | None,
 ) -> str:
-    username_text = f"@{username}" if username else "не указан"
-    comment_text = comment.strip() if comment and comment.strip() else "без комментария"
+    comment_text = comment.strip() if comment and comment.strip() else "Нет"
+    username_text = f"@{username}" if username else "Не указан"
 
     return (
-        "🔔 <b>Новая заявка</b>\n\n"
+        f"<code>{lead_id:08d}</code>\n"
+        "📩 <b>НОВАЯ ЗАЯВКА!</b>\n\n"
         f"👤 <b>Имя:</b> {name}\n"
         f"📱 <b>Телефон:</b> {phone}\n"
         f"💬 <b>Комментарий:</b> {comment_text}\n"
-        f"🙋 <b>Telegram:</b> {username_text}"
+        f"👤 <b>Telegram:</b> {username_text}"
     )
 
 
@@ -32,6 +34,7 @@ async def notify_admin_about_lead(
     username: str | None = None,
 ) -> None:
     text = build_admin_lead_message(
+        lead_id=lead_id,
         name=name,
         phone=phone,
         comment=comment,

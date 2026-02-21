@@ -27,7 +27,13 @@ def get_cancel_keyboard() -> ReplyKeyboardMarkup:
 
 
 def _normalize_phone(phone: str) -> str:
-    cleaned = phone.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    cleaned = (
+        phone.strip()
+        .replace(" ", "")
+        .replace("-", "")
+        .replace("(", "")
+        .replace(")", "")
+    )
     if cleaned and not cleaned.startswith("+"):
         cleaned = f"+{cleaned}"
     return cleaned
@@ -35,7 +41,6 @@ def _normalize_phone(phone: str) -> str:
 
 def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
     phone_link = _normalize_phone(phone)
-
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📞 Позвонить", url=f"tel:{phone_link}")],
