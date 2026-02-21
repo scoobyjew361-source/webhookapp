@@ -5,13 +5,15 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
 )
 
+from app.content import BTN_CANCEL, BTN_CONTACTS, BTN_CREATE_LEAD, BTN_REVIEWS
+
 
 def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📝 Оставить заявку")],
-            [KeyboardButton(text="📞 Контакты")],
-            [KeyboardButton(text="⭐ Отзывы")],
+            [KeyboardButton(text=BTN_CREATE_LEAD)],
+            [KeyboardButton(text=BTN_CONTACTS)],
+            [KeyboardButton(text=BTN_REVIEWS)],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -20,7 +22,7 @@ def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
 
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="❌ Отмена")]],
+        keyboard=[[KeyboardButton(text=BTN_CANCEL)]],
         resize_keyboard=True,
         one_time_keyboard=False,
     )
@@ -44,10 +46,6 @@ def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📞 Позвонить", url=f"tel:{phone_link}")],
-            [
-                InlineKeyboardButton(
-                    text="✅ Обработано", callback_data=f"lead_done:{lead_id}"
-                )
-            ],
+            [InlineKeyboardButton(text="✅ Обработано", callback_data=f"lead_done:{lead_id}")],
         ]
     )
