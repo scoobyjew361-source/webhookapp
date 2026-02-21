@@ -9,10 +9,6 @@ from app.content import (
     ASK_COMMENT_TEXT,
     ASK_NAME_TEXT,
     ASK_PHONE_TEXT,
-    BTN_CANCEL,
-    BTN_CONTACTS,
-    BTN_CREATE_LEAD,
-    BTN_REVIEWS,
     CANCEL_TEXT,
     CONTACTS_TEXT,
     LEAD_SAVED_TEXT,
@@ -30,6 +26,30 @@ class LeadForm(StatesGroup):
     name = State()
     phone = State()
     comment = State()
+
+
+def _normalized_text(message: Message) -> str:
+    return (message.text or "").strip().lower()
+
+
+def _is_create_lead(message: Message) -> bool:
+    text = _normalized_text(message)
+    return text.startswith("📝") or "оставить заявку" in text or "заявк" in text
+
+
+def _is_contacts(message: Message) -> bool:
+    text = _normalized_text(message)
+    return text.startswith("📞") or "контакт" in text
+
+
+def _is_reviews(message: Message) -> bool:
+    text = _normalized_text(message)
+    return text.startswith("⭐") or "отзыв" in text
+
+
+def _is_cancel(message: Message) -> bool:
+    text = _normalized_text(message)
+    return text.startswith("❌") or "отмен" in text
 
 
 async def _save_user_if_new(message: Message) -> None:
@@ -65,23 +85,23 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == BTN_CREATE_LEAD)
+@router.message(F.text, _is_create_lead)
 async def on_create_lead(message: Message, state: FSMContext) -> None:
     await state.set_state(LeadForm.name)
     await message.answer(ASK_NAME_TEXT, reply_markup=get_cancel_keyboard())
 
 
-@router.message(F.text == BTN_CONTACTS)
+@router.message(F.text, _is_contacts)
 async def on_contacts(message: Message) -> None:
     await message.answer(CONTACTS_TEXT)
 
 
-@router.message(F.text == BTN_REVIEWS)
+@router.message(F.text, _is_reviews)
 async def on_reviews(message: Message) -> None:
     await message.answer(REVIEWS_TEXT)
 
 
-@router.message(F.text == BTN_CANCEL)
+@router.message(F.text, _is_cancel)
 async def on_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(CANCEL_TEXT, reply_markup=get_main_menu_keyboard())
