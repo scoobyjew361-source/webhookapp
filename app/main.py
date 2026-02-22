@@ -21,7 +21,6 @@ async def lifespan(app: FastAPI):
         drop_pending_updates=True,
     )
     yield
-    await bot.delete_webhook(drop_pending_updates=False)
     await bot.session.close()
 
 
