@@ -43,9 +43,10 @@ def _normalize_phone(phone: str) -> str:
 
 def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
     phone_link = _normalize_phone(phone)
+    whatsapp_link = f"https://wa.me/{phone_link.replace('+', '')}"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📞 Позвонить", url=f"tel:{phone_link}")],
+            [InlineKeyboardButton(text="📞 Позвонить", url=whatsapp_link)],
             [InlineKeyboardButton(text="✅ Обработано", callback_data=f"lead_done:{lead_id}")],
         ]
     )
