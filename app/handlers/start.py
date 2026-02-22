@@ -160,11 +160,10 @@ async def on_comment_received(message: Message, state: FSMContext) -> None:
         await session.commit()
         await session.refresh(lead)
 
-    from app.bot import bot
     from app.services.notifier import notify_admin_about_lead
 
     await notify_admin_about_lead(
-        bot=bot,
+        bot=message.bot,
         lead_id=lead.id,
         name=name,
         phone=phone,
