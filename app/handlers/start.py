@@ -9,6 +9,11 @@ from app.content import (
     ASK_COMMENT_TEXT,
     ASK_NAME_TEXT,
     ASK_PHONE_TEXT,
+    ASK_SERVICE_TEXT,
+    BTN_CANCEL,
+    BTN_CONTACTS,
+    BTN_CREATE_LEAD,
+    BTN_REVIEWS,
     CANCEL_TEXT,
     CONTACTS_TEXT,
     LEAD_SAVED_TEXT,
@@ -18,6 +23,7 @@ from app.database import AsyncSessionLocal
 from app.keyboards.menus import get_cancel_keyboard, get_main_menu_keyboard
 from app.models.lead import Lead
 from app.models.user import User
+from app.services.notifier import notify_admin_about_lead
 
 router = Router()
 
@@ -25,31 +31,8 @@ router = Router()
 class LeadForm(StatesGroup):
     name = State()
     phone = State()
+    service = State()
     comment = State()
-
-
-def _normalized_text(message: Message) -> str:
-    return (message.text or "").strip().lower()
-
-
-def _is_create_lead(message: Message) -> bool:
-    text = _normalized_text(message)
-    return text.startswith("📝") or "оставить заявку" in text or "заявк" in text
-
-
-def _is_contacts(message: Message) -> bool:
-    text = _normalized_text(message)
-    return text.startswith("📞") or "контакт" in text
-
-
-def _is_reviews(message: Message) -> bool:
-    text = _normalized_text(message)
-    return text.startswith("⭐") or "отзыв" in text
-
-
-def _is_cancel(message: Message) -> bool:
-    text = _normalized_text(message)
-    return text.startswith("❌") or "отмен" in text
 
 
 async def _save_user_if_new(message: Message) -> None:
@@ -77,31 +60,28 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     await _save_user_if_new(message)
     first_name = message.from_user.first_name if message.from_user else "друг"
     await message.answer(
-        text=(
-            f"Привет, {first_name}!\n\n"
-            "Я бот для заявок. Выбери действие в меню ниже."
-        ),
+        text=f"Привет, {first_name}!\n\nЯ бот для заявок. Выбери действие в меню ниже.",
         reply_markup=get_main_menu_keyboard(),
     )
 
 
-@router.message(F.text, _is_create_lead)
+@router.message(F.text == BTN_CREATE_LEAD)
 async def on_create_lead(message: Message, state: FSMContext) -> None:
     await state.set_state(LeadForm.name)
     await message.answer(ASK_NAME_TEXT, reply_markup=get_cancel_keyboard())
 
 
-@router.message(F.text, _is_contacts)
+@router.message(F.text == BTN_CONTACTS)
 async def on_contacts(message: Message) -> None:
     await message.answer(CONTACTS_TEXT)
 
 
-@router.message(F.text, _is_reviews)
+@router.message(F.text == BTN_REVIEWS)
 async def on_reviews(message: Message) -> None:
     await message.answer(REVIEWS_TEXT)
 
 
-@router.message(F.text, _is_cancel)
+@router.message(F.text == BTN_CANCEL)
 async def on_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(CANCEL_TEXT, reply_markup=get_main_menu_keyboard())
@@ -127,6 +107,16 @@ async def on_phone_received(message: Message, state: FSMContext) -> None:
         return
 
     await state.update_data(phone=phone)
+    await state.set_state(LeadForm.service)
+    await message.answer(ASK_SERVICE_TEXT, reply_markup=get_cancel_keyboard())
+
+
+@router.message(LeadForm.service, F.text)
+async def on_service_received(message: Message, state: FSMContext) -> None:
+    service_raw = message.text.strip()
+    service = None if service_raw in {"", "-"} else service_raw
+
+    await state.update_data(service=service)
     await state.set_state(LeadForm.comment)
     await message.answer(ASK_COMMENT_TEXT, reply_markup=get_cancel_keyboard())
 
@@ -139,6 +129,7 @@ async def on_comment_received(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     name = data.get("name")
     phone = data.get("phone")
+    service = data.get("service")
     if not name or not phone or not message.from_user:
         await state.clear()
         await message.answer(
@@ -154,19 +145,19 @@ async def on_comment_received(message: Message, state: FSMContext) -> None:
             user_id=message.from_user.id,
             name=name,
             phone=phone,
+            service=service,
             comment=comment,
         )
         session.add(lead)
         await session.commit()
         await session.refresh(lead)
 
-    from app.services.notifier import notify_admin_about_lead
-
     await notify_admin_about_lead(
         bot=message.bot,
         lead_id=lead.id,
         name=name,
         phone=phone,
+        service=service,
         comment=comment,
         username=message.from_user.username,
     )

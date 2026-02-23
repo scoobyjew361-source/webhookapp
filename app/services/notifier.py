@@ -9,9 +9,11 @@ def build_admin_lead_message(
     lead_id: int,
     name: str,
     phone: str,
+    service: str | None,
     comment: str | None,
     username: str | None,
 ) -> str:
+    service_text = service.strip() if service and service.strip() else "Не указана"
     comment_text = comment.strip() if comment and comment.strip() else "Нет"
     username_text = f"@{username}" if username else "Не указан"
 
@@ -20,6 +22,7 @@ def build_admin_lead_message(
         "📩 <b>НОВАЯ ЗАЯВКА!</b>\n\n"
         f"👤 <b>Имя:</b> {name}\n"
         f"📱 <b>Телефон:</b> {phone}\n"
+        f"💇 <b>Услуга:</b> {service_text}\n"
         f"💬 <b>Комментарий:</b> {comment_text}\n"
         f"👤 <b>Telegram:</b> {username_text}"
     )
@@ -30,6 +33,7 @@ async def notify_admin_about_lead(
     lead_id: int,
     name: str,
     phone: str,
+    service: str | None = None,
     comment: str | None = None,
     username: str | None = None,
 ) -> None:
@@ -37,6 +41,7 @@ async def notify_admin_about_lead(
         lead_id=lead_id,
         name=name,
         phone=phone,
+        service=service,
         comment=comment,
         username=username,
     )

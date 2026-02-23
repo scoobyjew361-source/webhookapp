@@ -16,6 +16,7 @@ class Lead(Base):
     )
     name:Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    service: Mapped[str | None] = mapped_column(String(255), nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="new", server_default=text("'new'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

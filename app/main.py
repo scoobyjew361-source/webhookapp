@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from aiogram.types import Update
@@ -6,9 +7,16 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from app.bot import bot, dp
 from app.config import settings
 from app.database import init_db
+from app.handlers.admin import send_stale_lead_reminders
 
 WEBHOOK_PATH = "/telegram/webhook"
 WEBHOOK_URL = f"{settings.host_url}{WEBHOOK_PATH}"
+
+
+async def _reminder_loop() -> None:
+    while True:
+        await send_stale_lead_reminders(bot)
+        await asyncio.sleep(30 * 60)
 
 
 @asynccontextmanager
@@ -20,7 +28,13 @@ async def lifespan(app: FastAPI):
         allowed_updates=dp.resolve_used_update_types(),
         drop_pending_updates=True,
     )
+    reminder_task = asyncio.create_task(_reminder_loop())
     yield
+    reminder_task.cancel()
+    try:
+        await reminder_task
+    except asyncio.CancelledError:
+        pass
     await bot.session.close()
 
 
