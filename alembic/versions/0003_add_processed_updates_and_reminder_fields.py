@@ -1,6 +1,6 @@
 """add processed updates and reminder fields
 
-Revision ID: 0003_add_processed_updates_and_reminder_fields
+Revision ID: 0003_processed_updates
 Revises: 0002_add_plan_id_to_payments
 Create Date: 2026-03-07 14:30:00
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "0003_add_processed_updates_and_reminder_fields"
+revision: str = "0003_processed_updates"
 down_revision: Union[str, Sequence[str], None] = "0002_add_plan_id_to_payments"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
