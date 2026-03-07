@@ -1,4 +1,4 @@
-﻿from aiogram.types import (
+from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
@@ -6,6 +6,7 @@
 )
 
 from app.content import BTN_CANCEL, BTN_CONTACTS, BTN_CREATE_LEAD, BTN_REVIEWS
+from app.utils.logic import normalize_phone
 
 
 def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
@@ -28,21 +29,8 @@ def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def _normalize_phone(phone: str) -> str:
-    cleaned = (
-        phone.strip()
-        .replace(" ", "")
-        .replace("-", "")
-        .replace("(", "")
-        .replace(")", "")
-    )
-    if cleaned and not cleaned.startswith("+"):
-        cleaned = f"+{cleaned}"
-    return cleaned
-
-
 def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
-    phone_link = _normalize_phone(phone)
+    phone_link = normalize_phone(phone)
     whatsapp_link = f"https://wa.me/{phone_link.replace('+', '')}"
     return InlineKeyboardMarkup(
         inline_keyboard=[

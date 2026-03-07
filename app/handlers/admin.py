@@ -1,17 +1,19 @@
-﻿from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.lead import Lead
 from app.models.user import User
+from app.utils.logic import parse_lead_id_from_callback
 
 router = Router()
-_reminded_lead_ids: set[int] = set()
+STALE_AFTER_HOURS = 1
+REMINDER_REPEAT_HOURS = 3
 
 
 def _is_admin(user_id: int | None) -> bool:
@@ -39,7 +41,9 @@ def _time_ago_text(created_at: datetime) -> str:
 
 def _format_lead_line(index: int, lead: Lead) -> str:
     age = _time_ago_text(lead.created_at)
-    stale = datetime.now(UTC) - (lead.created_at if lead.created_at.tzinfo else lead.created_at.replace(tzinfo=UTC)) > timedelta(hours=3)
+    stale = datetime.now(UTC) - (
+        lead.created_at if lead.created_at.tzinfo else lead.created_at.replace(tzinfo=UTC)
+    ) > timedelta(hours=3)
     warning = " [STALE]" if stale else ""
     service_text = lead.service.strip() if lead.service and lead.service.strip() else "Not provided"
     return (
@@ -154,10 +158,8 @@ async def on_lead_done(callback: CallbackQuery) -> None:
         await callback.answer()
         return
 
-    lead_id_raw = (callback.data or "").split(":", 1)[1]
-    try:
-        lead_id = int(lead_id_raw)
-    except ValueError:
+    lead_id = parse_lead_id_from_callback(callback.data)
+    if lead_id is None:
         await callback.answer("Invalid lead ID", show_alert=True)
         return
 
@@ -168,33 +170,38 @@ async def on_lead_done(callback: CallbackQuery) -> None:
             return
 
         lead.status = "completed"
+        lead.last_reminder_at = None
         await session.commit()
 
-    _reminded_lead_ids.discard(lead_id)
     await callback.answer("Lead marked as completed")
 
 
 async def send_stale_lead_reminders(bot: Bot) -> None:
-    cutoff = datetime.now(UTC) - timedelta(hours=1)
+    now = datetime.now(UTC)
+    stale_cutoff = now - timedelta(hours=STALE_AFTER_HOURS)
+    repeat_cutoff = now - timedelta(hours=REMINDER_REPEAT_HOURS)
 
     async with AsyncSessionLocal() as session:
         overdue_leads = (
             await session.scalars(
                 select(Lead)
-                .where(Lead.status == "new", Lead.created_at <= cutoff)
+                .where(
+                    Lead.status == "new",
+                    Lead.created_at <= stale_cutoff,
+                    or_(Lead.last_reminder_at.is_(None), Lead.last_reminder_at <= repeat_cutoff),
+                )
                 .order_by(Lead.created_at.asc())
             )
         ).all()
 
-    current_overdue_ids = {lead.id for lead in overdue_leads}
-    _reminded_lead_ids.intersection_update(current_overdue_ids)
+        for lead in overdue_leads:
+            age = _time_ago_text(lead.created_at)
+            await bot.send_message(
+                chat_id=settings.admin_id,
+                text=f"Stale lead from {lead.name}: waiting {age}.",
+            )
+            lead.last_reminder_at = now
+            lead.reminder_count += 1
 
-    for lead in overdue_leads:
-        if lead.id in _reminded_lead_ids:
-            continue
-        age = _time_ago_text(lead.created_at)
-        await bot.send_message(
-            chat_id=settings.admin_id,
-            text=f"Stale lead from {lead.name}: waiting {age}.",
-        )
-        _reminded_lead_ids.add(lead.id)
+        if overdue_leads:
+            await session.commit()

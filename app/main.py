@@ -3,11 +3,14 @@ from contextlib import asynccontextmanager
 
 from aiogram.types import Update
 from fastapi import FastAPI, Header, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 
 from app.bot import bot, dp
 from app.config import settings
-from app.database import run_migrations
+from app.database import AsyncSessionLocal, run_migrations
 from app.handlers.admin import send_stale_lead_reminders
+from app.models.processed_update import ProcessedUpdate
+from app.utils.logic import extract_update_id
 
 WEBHOOK_PATH = "/telegram/webhook"
 WEBHOOK_URL = f"{settings.host_url}{WEBHOOK_PATH}"
@@ -55,6 +58,19 @@ async def telegram_webhook(
         raise HTTPException(status_code=403, detail="Invalid telegram webhook secret")
 
     payload = await request.json()
+    update_id = extract_update_id(payload)
+    if update_id is None:
+        raise HTTPException(status_code=400, detail="Invalid telegram payload: missing update_id")
+
+    async with AsyncSessionLocal() as session:
+        session.add(ProcessedUpdate(update_id=update_id))
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            # Telegram can retry the same update. Ignore duplicates.
+            return {"ok": True}
+
     update = Update.model_validate(payload)
     await dp.feed_update(bot, update)
     return {"ok": True}

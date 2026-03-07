@@ -152,15 +152,19 @@ async def on_comment_received(message: Message, state: FSMContext) -> None:
         await session.commit()
         await session.refresh(lead)
 
-    await notify_admin_about_lead(
-        bot=message.bot,
-        lead_id=lead.id,
-        name=name,
-        phone=phone,
-        service=service,
-        comment=comment,
-        username=message.from_user.username,
-    )
+    try:
+        await notify_admin_about_lead(
+            bot=message.bot,
+            lead_id=lead.id,
+            name=name,
+            phone=phone,
+            service=service,
+            comment=comment,
+            username=message.from_user.username,
+        )
+    except Exception:
+        # Lead is already stored in DB; do not fail the whole update on notify errors.
+        pass
 
     await state.clear()
     await message.answer(LEAD_SAVED_TEXT, reply_markup=get_main_menu_keyboard())
