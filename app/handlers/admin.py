@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+﻿from datetime import UTC, datetime, timedelta
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
@@ -25,25 +25,26 @@ def _time_ago_text(created_at: datetime) -> str:
 
     minutes = int(delta.total_seconds() // 60)
     if minutes < 1:
-        return "только что"
+        return "just now"
     if minutes < 60:
-        return f"{minutes} мин назад"
+        return f"{minutes} min ago"
 
     hours = minutes // 60
     if hours < 24:
-        return f"{hours} час назад" if hours == 1 else f"{hours} ч назад"
+        return f"{hours} h ago"
 
     days = hours // 24
-    return f"{days} дн назад"
+    return f"{days} d ago"
 
 
 def _format_lead_line(index: int, lead: Lead) -> str:
     age = _time_ago_text(lead.created_at)
-    warning = " ⚠️" if datetime.now(UTC) - (lead.created_at if lead.created_at.tzinfo else lead.created_at.replace(tzinfo=UTC)) > timedelta(hours=3) else ""
-    service_text = lead.service.strip() if lead.service and lead.service.strip() else "Не указана"
+    stale = datetime.now(UTC) - (lead.created_at if lead.created_at.tzinfo else lead.created_at.replace(tzinfo=UTC)) > timedelta(hours=3)
+    warning = " [STALE]" if stale else ""
+    service_text = lead.service.strip() if lead.service and lead.service.strip() else "Not provided"
     return (
         f"{index}. {lead.name} {lead.phone} ({age}){warning}\n"
-        f"   Услуга: {service_text}"
+        f"   Service: {service_text}"
     )
 
 
@@ -55,7 +56,7 @@ def _build_leads_keyboard(leads: list[Lead]) -> InlineKeyboardMarkup | None:
     rows = [
         [
             InlineKeyboardButton(
-                text=f"✅ Обработано #{lead.id}",
+                text=f"Done #{lead.id}",
                 callback_data=f"lead_done:{lead.id}",
             )
         ]
@@ -80,11 +81,11 @@ async def cmd_stats(message: Message) -> None:
         ) or 0
 
     text = (
-        "📊 Статистика:\n\n"
-        f"Пользователей: {users_count}\n"
-        f"Заявок всего: {leads_total}\n"
-        f"Новых: {leads_new}\n"
-        f"Обработанных: {leads_completed}"
+        "Stats:\n\n"
+        f"Users: {users_count}\n"
+        f"Total leads: {leads_total}\n"
+        f"New: {leads_new}\n"
+        f"Completed: {leads_completed}"
     )
     await message.answer(text)
 
@@ -107,13 +108,13 @@ async def cmd_leads(message: Message) -> None:
         ).all()
 
     if not leads:
-        await message.answer("📋 Заявок пока нет.")
+        await message.answer("No leads yet.")
         return
 
-    lines = ["📋 Последние заявки:\n"]
+    lines = ["Latest leads:\n"]
     for idx, lead in enumerate(leads, start=1):
-        status = "Новая" if lead.status == "new" else "Обработана"
-        lines.append(f"{_format_lead_line(idx, lead)}\n   Статус: {status}\n")
+        status = "New" if lead.status == "new" else "Completed"
+        lines.append(f"{_format_lead_line(idx, lead)}\n   Status: {status}\n")
 
     keyboard = _build_leads_keyboard(leads)
     await message.answer("\n".join(lines), reply_markup=keyboard)
@@ -135,10 +136,10 @@ async def cmd_leads_new(message: Message) -> None:
         ).all()
 
     if not leads:
-        await message.answer("📋 Необработанных заявок нет.")
+        await message.answer("No pending leads.")
         return
 
-    lines = [f"📋 Необработанные заявки ({len(leads)}):\n"]
+    lines = [f"Pending leads ({len(leads)}):\n"]
     for idx, lead in enumerate(leads, start=1):
         lines.append(_format_lead_line(idx, lead))
         lines.append("")
@@ -157,20 +158,20 @@ async def on_lead_done(callback: CallbackQuery) -> None:
     try:
         lead_id = int(lead_id_raw)
     except ValueError:
-        await callback.answer("Некорректный ID заявки", show_alert=True)
+        await callback.answer("Invalid lead ID", show_alert=True)
         return
 
     async with AsyncSessionLocal() as session:
         lead = await session.get(Lead, lead_id)
         if not lead:
-            await callback.answer("Заявка не найдена", show_alert=True)
+            await callback.answer("Lead not found", show_alert=True)
             return
 
         lead.status = "completed"
         await session.commit()
 
     _reminded_lead_ids.discard(lead_id)
-    await callback.answer("Заявка отмечена как обработанная")
+    await callback.answer("Lead marked as completed")
 
 
 async def send_stale_lead_reminders(bot: Bot) -> None:
@@ -194,6 +195,6 @@ async def send_stale_lead_reminders(bot: Bot) -> None:
         age = _time_ago_text(lead.created_at)
         await bot.send_message(
             chat_id=settings.admin_id,
-            text=f"⚠️ Заявка от {lead.name} висит {age}! Клиент ждёт звонка.",
+            text=f"Stale lead from {lead.name}: waiting {age}.",
         )
         _reminded_lead_ids.add(lead.id)

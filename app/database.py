@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
+from typing import AsyncGenerator
+
 from dotenv import load_dotenv
+from alembic import command
+from alembic.config import Config
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from typing import AsyncGenerator
 
 load_dotenv()
 
@@ -29,6 +33,7 @@ def build_database_url() -> str:
     return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db_name}"
 
 DATABASE_URL = build_database_url()
+ALEMBIC_INI_PATH = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 class Base(DeclarativeBase):
     pass
@@ -48,8 +53,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 
-async def init_db() -> None:
-    import app.models
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+def run_migrations() -> None:
+    config = Config(str(ALEMBIC_INI_PATH))
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+    command.upgrade(config, "head")

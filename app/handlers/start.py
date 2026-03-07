@@ -1,4 +1,4 @@
-from aiogram import F, Router
+﻿from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -58,9 +58,9 @@ async def _save_user_if_new(message: Message) -> None:
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
     await _save_user_if_new(message)
-    first_name = message.from_user.first_name if message.from_user else "друг"
+    first_name = message.from_user.first_name if message.from_user else "friend"
     await message.answer(
-        text=f"Привет, {first_name}!\n\nЯ бот для заявок. Выбери действие в меню ниже.",
+        text=f"Hi, {first_name}!\n\nI collect lead requests. Choose an action below.",
         reply_markup=get_main_menu_keyboard(),
     )
 
@@ -91,7 +91,7 @@ async def on_cancel(message: Message, state: FSMContext) -> None:
 async def on_name_received(message: Message, state: FSMContext) -> None:
     name = message.text.strip()
     if not name:
-        await message.answer("Имя не должно быть пустым. Введите имя еще раз.")
+        await message.answer("Name must not be empty. Please try again.")
         return
 
     await state.update_data(name=name)
@@ -103,7 +103,7 @@ async def on_name_received(message: Message, state: FSMContext) -> None:
 async def on_phone_received(message: Message, state: FSMContext) -> None:
     phone = message.text.strip()
     if not phone:
-        await message.answer("Телефон не должен быть пустым. Введите телефон еще раз.")
+        await message.answer("Phone must not be empty. Please try again.")
         return
 
     await state.update_data(phone=phone)
@@ -133,7 +133,7 @@ async def on_comment_received(message: Message, state: FSMContext) -> None:
     if not name or not phone or not message.from_user:
         await state.clear()
         await message.answer(
-            "Не удалось сохранить заявку. Пожалуйста, начните заново.",
+            "Could not save lead. Please start again.",
             reply_markup=get_main_menu_keyboard(),
         )
         return

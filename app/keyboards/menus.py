@@ -1,4 +1,4 @@
-from aiogram.types import (
+﻿from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
@@ -46,7 +46,7 @@ def get_admin_lead_keyboard(phone: str, lead_id: int) -> InlineKeyboardMarkup:
     whatsapp_link = f"https://wa.me/{phone_link.replace('+', '')}"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📞 Позвонить", url=whatsapp_link)],
-            [InlineKeyboardButton(text="✅ Обработано", callback_data=f"lead_done:{lead_id}")],
+            [InlineKeyboardButton(text="Call", url=whatsapp_link)],
+            [InlineKeyboardButton(text="Done", callback_data=f"lead_done:{lead_id}")],
         ]
     )

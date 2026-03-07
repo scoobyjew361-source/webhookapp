@@ -1,3 +1,5 @@
+﻿from html import escape
+
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
@@ -13,18 +15,20 @@ def build_admin_lead_message(
     comment: str | None,
     username: str | None,
 ) -> str:
-    service_text = service.strip() if service and service.strip() else "Не указана"
-    comment_text = comment.strip() if comment and comment.strip() else "Нет"
-    username_text = f"@{username}" if username else "Не указан"
+    safe_name = escape(name)
+    safe_phone = escape(phone)
+    service_text = escape(service.strip()) if service and service.strip() else "Not provided"
+    comment_text = escape(comment.strip()) if comment and comment.strip() else "None"
+    username_text = escape(f"@{username}") if username else "Not provided"
 
     return (
         f"<code>{lead_id:08d}</code>\n"
-        "📩 <b>НОВАЯ ЗАЯВКА!</b>\n\n"
-        f"👤 <b>Имя:</b> {name}\n"
-        f"📱 <b>Телефон:</b> {phone}\n"
-        f"💇 <b>Услуга:</b> {service_text}\n"
-        f"💬 <b>Комментарий:</b> {comment_text}\n"
-        f"👤 <b>Telegram:</b> {username_text}"
+        "<b>NEW LEAD</b>\n\n"
+        f"<b>Name:</b> {safe_name}\n"
+        f"<b>Phone:</b> {safe_phone}\n"
+        f"<b>Service:</b> {service_text}\n"
+        f"<b>Comment:</b> {comment_text}\n"
+        f"<b>Telegram:</b> {username_text}"
     )
 
 

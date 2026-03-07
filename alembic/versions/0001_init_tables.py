@@ -29,40 +29,23 @@ def upgrade() -> None:
     op.create_index("ix_users_telegram_id", "users", ["telegram_id"], unique=True)
 
     op.create_table(
-        "payments",
+        "leads",
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("amount", sa.Numeric(12, 2), nullable=False),
-        sa.Column("plan_id", sa.String(length=20), nullable=False),
-        sa.Column("currency", sa.String(length=3), server_default="RUB", nullable=False),
-        sa.Column("status", sa.String(length=20), server_default="pending", nullable=False),
-        sa.Column("transaction_id", sa.String(length=255), nullable=False),
+        sa.Column("user_id", sa.BigInteger(), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("phone", sa.String(length=50), nullable=False),
+        sa.Column("service", sa.String(length=255), nullable=True),
+        sa.Column("comment", sa.Text(), nullable=True),
+        sa.Column("status", sa.String(length=20), server_default=sa.text("'new'"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.CheckConstraint("status IN ('pending', 'success', 'failed')", name="ck_payments_status"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.UniqueConstraint("transaction_id"),
+        sa.ForeignKeyConstraint(["user_id"], ["users.telegram_id"], ondelete="CASCADE"),
     )
-    op.create_index("ix_payments_user_id", "payments", ["user_id"], unique=False)
-
-    op.create_table(
-        "subscriptions",
-        sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("plan_id", sa.String(length=20), nullable=False),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
-        sa.CheckConstraint("plan_id IN ('basic', 'pro')", name="ck_subscriptions_plan_id"),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-    )
-    op.create_index("ix_subscriptions_user_id", "subscriptions", ["user_id"], unique=False)
+    op.create_index("ix_leads_user_id", "leads", ["user_id"], unique=False)
 
 
 def downgrade() -> None:
-    op.drop_index("ix_subscriptions_user_id", table_name="subscriptions")
-    op.drop_table("subscriptions")
-
-    op.drop_index("ix_payments_user_id", table_name="payments")
-    op.drop_table("payments")
+    op.drop_index("ix_leads_user_id", table_name="leads")
+    op.drop_table("leads")
 
     op.drop_index("ix_users_telegram_id", table_name="users")
     op.drop_table("users")

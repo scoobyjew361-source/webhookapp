@@ -6,7 +6,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 
 from app.bot import bot, dp
 from app.config import settings
-from app.database import init_db
+from app.database import run_migrations
 from app.handlers.admin import send_stale_lead_reminders
 
 WEBHOOK_PATH = "/telegram/webhook"
@@ -21,7 +21,7 @@ async def _reminder_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    await asyncio.to_thread(run_migrations)
     await bot.set_webhook(
         url=WEBHOOK_URL,
         secret_token=settings.webhook_secret,
@@ -51,9 +51,8 @@ async def telegram_webhook(
     request: Request,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ) -> dict[str, bool]:
-    if settings.webhook_secret:
-        if x_telegram_bot_api_secret_token != settings.webhook_secret:
-            raise HTTPException(status_code=403, detail="Invalid telegram webhook secret")
+    if x_telegram_bot_api_secret_token != settings.webhook_secret:
+        raise HTTPException(status_code=403, detail="Invalid telegram webhook secret")
 
     payload = await request.json()
     update = Update.model_validate(payload)

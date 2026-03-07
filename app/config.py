@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-REQUIRED_ENV_VARS = ("BOT_TOKEN", "ADMIN_ID", "DATABASE_URL", "HOST_URL")
+REQUIRED_ENV_VARS = ("BOT_TOKEN", "ADMIN_ID", "DATABASE_URL", "HOST_URL", "WEBHOOK_SECRET")
 
 
 def _require_env(name: str) -> str:
@@ -13,11 +13,6 @@ def _require_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"Environment variable {name} is required in .env")
     return value
-
-
-def _optional_env(name: str) -> str | None:
-    value = os.getenv(name, "").strip()
-    return value or None
 
 
 def _parse_admin_id(raw: str) -> int:
@@ -33,7 +28,7 @@ class Settings:
     admin_id: int
     database_url: str
     host_url: str
-    webhook_secret: str | None
+    webhook_secret: str
 
 
 def load_settings() -> Settings:
@@ -43,7 +38,7 @@ def load_settings() -> Settings:
         admin_id=_parse_admin_id(values["ADMIN_ID"]),
         database_url=values["DATABASE_URL"],
         host_url=values["HOST_URL"].rstrip("/"),
-        webhook_secret=_optional_env("WEBHOOK_SECRET"),
+        webhook_secret=values["WEBHOOK_SECRET"],
     )
 
 
