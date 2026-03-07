@@ -27,16 +27,16 @@ def _time_ago_text(created_at: datetime) -> str:
 
     minutes = int(delta.total_seconds() // 60)
     if minutes < 1:
-        return "just now"
+        return "только что"
     if minutes < 60:
-        return f"{minutes} min ago"
+        return f"{minutes} мин назад"
 
     hours = minutes // 60
     if hours < 24:
-        return f"{hours} h ago"
+        return f"{hours} ч назад"
 
     days = hours // 24
-    return f"{days} d ago"
+    return f"{days} дн назад"
 
 
 def _format_lead_line(index: int, lead: Lead) -> str:
@@ -45,7 +45,7 @@ def _format_lead_line(index: int, lead: Lead) -> str:
         lead.created_at if lead.created_at.tzinfo else lead.created_at.replace(tzinfo=UTC)
     ) > timedelta(hours=3)
     warning = " [STALE]" if stale else ""
-    service_text = lead.service.strip() if lead.service and lead.service.strip() else "Not provided"
+    service_text = lead.service.strip() if lead.service and lead.service.strip() else "Не указана"
     return (
         f"{index}. {lead.name} {lead.phone} ({age}){warning}\n"
         f"   Service: {service_text}"
@@ -85,11 +85,11 @@ async def cmd_stats(message: Message) -> None:
         ) or 0
 
     text = (
-        "Stats:\n\n"
-        f"Users: {users_count}\n"
-        f"Total leads: {leads_total}\n"
-        f"New: {leads_new}\n"
-        f"Completed: {leads_completed}"
+        "Статистика:\n\n"
+        f"Пользователи: {users_count}\n"
+        f"Всего заявок: {leads_total}\n"
+        f"Новые: {leads_new}\n"
+        f"Завершенные: {leads_completed}"
     )
     await message.answer(text)
 
@@ -112,13 +112,13 @@ async def cmd_leads(message: Message) -> None:
         ).all()
 
     if not leads:
-        await message.answer("No leads yet.")
+        await message.answer("Заявок пока нет.")
         return
 
-    lines = ["Latest leads:\n"]
+    lines = ["Последние заявки:\n"]
     for idx, lead in enumerate(leads, start=1):
-        status = "New" if lead.status == "new" else "Completed"
-        lines.append(f"{_format_lead_line(idx, lead)}\n   Status: {status}\n")
+        status = "Новая" if lead.status == "new" else "Завершена"
+        lines.append(f"{_format_lead_line(idx, lead)}\n   Статус: {status}\n")
 
     keyboard = _build_leads_keyboard(leads)
     await message.answer("\n".join(lines), reply_markup=keyboard)
@@ -140,10 +140,10 @@ async def cmd_leads_new(message: Message) -> None:
         ).all()
 
     if not leads:
-        await message.answer("No pending leads.")
+        await message.answer("Новых заявок нет.")
         return
 
-    lines = [f"Pending leads ({len(leads)}):\n"]
+    lines = [f"Новые заявки ({len(leads)}):\n"]
     for idx, lead in enumerate(leads, start=1):
         lines.append(_format_lead_line(idx, lead))
         lines.append("")
@@ -160,20 +160,20 @@ async def on_lead_done(callback: CallbackQuery) -> None:
 
     lead_id = parse_lead_id_from_callback(callback.data)
     if lead_id is None:
-        await callback.answer("Invalid lead ID", show_alert=True)
+        await callback.answer("Некорректный ID заявки", show_alert=True)
         return
 
     async with AsyncSessionLocal() as session:
         lead = await session.get(Lead, lead_id)
         if not lead:
-            await callback.answer("Lead not found", show_alert=True)
+            await callback.answer("Заявка не найдена", show_alert=True)
             return
 
         lead.status = "completed"
         lead.last_reminder_at = None
         await session.commit()
 
-    await callback.answer("Lead marked as completed")
+    await callback.answer("Заявка отмечена как завершенная")
 
 
 async def send_stale_lead_reminders(bot: Bot) -> None:
@@ -198,7 +198,7 @@ async def send_stale_lead_reminders(bot: Bot) -> None:
             age = _time_ago_text(lead.created_at)
             await bot.send_message(
                 chat_id=settings.admin_id,
-                text=f"Stale lead from {lead.name}: waiting {age}.",
+                text=f"Просроченная заявка от {lead.name}: ожидает {age}.",
             )
             lead.last_reminder_at = now
             lead.reminder_count += 1
